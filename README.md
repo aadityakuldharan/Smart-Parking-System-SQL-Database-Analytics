@@ -13,8 +13,7 @@ This project demonstrates how SQL can be used to create a real-world parking dat
 - [Key Features](#key-features)
 - [SQL Queries](#sql-queries)
 - [Insights Generated](#insights-generated)
-- [How to Run](#how-to-run)
-- [Future Enhancements](#future-enhancements)
+
 
 ---
 
