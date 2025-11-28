@@ -76,4 +76,25 @@ GROUP BY pl.name
 ORDER BY revenue DESC
 LIMIT 1;
 
+# Query 14: Show all vehicles 
+DELIMITER $$
+CREATE PROCEDURE ShowAllVehicles()
+BEGIN
+    SELECT * FROM Vehicles;
+END $$
+DELIMITER ;
+
+CALL ShowAllVehicles();
+
+# Query 15: Show all vehicles
+CREATE VIEW AllVehiclesView AS
+SELECT * FROM Vehicles;
+
+SELECT * FROM AllVehiclesView;
+
+# Query 16: Indexes for Optimized Parking Records Access
+CREATE INDEX idx_vehicle_id ON ParkingRecords(vehicle_id);
+CREATE INDEX idx_slot_id ON ParkingRecords(slot_id);
+CREATE INDEX idx_lot_id ON ParkingSlots(lot_id);
+
 
