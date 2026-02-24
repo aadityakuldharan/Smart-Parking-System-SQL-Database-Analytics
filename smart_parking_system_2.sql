@@ -7,6 +7,12 @@ select * from parkingrecords;
 select * from parkingslots;
 select * from vehicles;
 
+# Indexes for Optimized Parking Records Access
+CREATE INDEX idx_vehicle_id ON ParkingRecords(vehicle_id);
+CREATE INDEX idx_slot_id ON ParkingRecords(slot_id);
+CREATE INDEX idx_lot_id ON ParkingSlots(lot_id);
+
+
 # Query 1: Total number of vehicles
 SELECT COUNT(*) AS total_vehicles FROM Vehicles;
 
@@ -76,25 +82,72 @@ GROUP BY pl.name
 ORDER BY revenue DESC
 LIMIT 1;
 
-# Query 14: Show all vehicles 
+# Query 14: Calculate Totatl Fare based on Entry & Exit time
 DELIMITER $$
-CREATE PROCEDURE ShowAllVehicles()
+
+CREATE PROCEDURE sp_ReleaseVehicle (
+    IN p_record_id INT
+)
 BEGIN
-    SELECT * FROM Vehicles;
+    DECLARE v_entry_time DATETIME;
+    DECLARE v_slot_id INT;
+    DECLARE v_hourly_rate DECIMAL(10,2);
+    DECLARE v_fee DECIMAL(10,2);
+
+    SELECT pr.entry_time, pr.slot_id, pl.hourly_rate
+    INTO v_entry_time, v_slot_id, v_hourly_rate
+    FROM ParkingRecords pr
+    JOIN ParkingSlots ps ON pr.slot_id = ps.slot_id
+    JOIN ParkingLots pl ON ps.lot_id = pl.lot_id
+    WHERE pr.record_id = p_record_id;
+
+    IF v_entry_time IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Invalid parking record ID';
+    END IF;
+
+    SET v_fee =
+        GREATEST(TIMESTAMPDIFF(HOUR, v_entry_time, NOW()), 1)
+        * v_hourly_rate;
+
+    UPDATE ParkingRecords
+    SET exit_time = NOW(),
+        fee = v_fee
+    WHERE record_id = p_record_id;
+
+    UPDATE ParkingSlots
+    SET is_reserved = 0
+    WHERE slot_id = v_slot_id;
+
 END $$
+
 DELIMITER ;
 
-CALL ShowAllVehicles();
+CALL sp_ReleaseVehicle(1);
 
-# Query 15: Show all vehicles
-CREATE VIEW AllVehiclesView AS
-SELECT * FROM Vehicles;
 
-SELECT * FROM AllVehiclesView;
 
-# Query 16: Indexes for Optimized Parking Records Access
-CREATE INDEX idx_vehicle_id ON ParkingRecords(vehicle_id);
-CREATE INDEX idx_slot_id ON ParkingRecords(slot_id);
-CREATE INDEX idx_lot_id ON ParkingSlots(lot_id);
+# Query 15: How long vehicle parked
+CREATE VIEW ParkingDurationCategory AS
+SELECT
+    record_id,
+    slot_id,
+    vehicle_id,
+    entry_time,
+    exit_time,
+    TIMESTAMPDIFF(HOUR, entry_time, exit_time) AS hours_parked,
+    CASE
+        WHEN TIMESTAMPDIFF(HOUR, entry_time, exit_time) <= 2 THEN 'Short Stay'
+        WHEN TIMESTAMPDIFF(HOUR, entry_time, exit_time) <= 6 THEN 'Medium Stay'
+        ELSE 'Long Stay'
+    END AS stay_type
+FROM ParkingRecords
+WHERE exit_time IS NOT NULL;
+
+select * from ParkingDurationCategory
+
+
+
+
 
 
